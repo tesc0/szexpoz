@@ -1,0 +1,12 @@
+{% extends "base.html.twig" %}
+
+{% block header %}
+{% endblock %}
+
+{% block content %}
+
+    {%  for image in images %}
+        <img style="width: 150px" src="gallery/{{ folder }}/{{ image }}">
+    {% endfor %}
+
+{% endblock %}

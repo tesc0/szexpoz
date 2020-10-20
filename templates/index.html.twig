@@ -1,0 +1,262 @@
+{% extends "base.html.twig" %}
+
+{% block content %}
+
+    <div class="header"></div>
+<!--
+    <div class="hero">
+
+    </div>
+-->
+    <div class="container">
+
+        {#
+
+        <div class="about">
+            <h1>Welcome!</h1>
+            <p>
+                This site is here to help you. Whether you'd like to spice up your sexual life or just create some challenges for you and your patner, we can provide both.
+                Give us some answers to the following questions and you'll receive a surprise!
+            </p>
+        </div>
+
+        #}
+
+        <div class="introduction">
+                    <p>
+                        Úgy érzed, hogy ellaposodott a párkapcsolatod? Szeretnéd izgalmasabbá tenni?
+                        <br>
+                        Válaszoljátok meg kedveseddel az alábbi hét kérdést, és ha felcsigáz benneteket a forró éjszakák gondolata,
+                        lepjétek meg magatokat egy <strong>személyre szabott szexnaptárral</strong>,
+                        amelyet a lap alján tudtok megvásárolni.
+                    </p>
+
+                    <button class="button decide alone">Egyedül töltöm ki</button>
+                    <button class="button decide together">Ketten töltjük ki</button>
+
+
+                    <div class="start-alone">
+                        <p>Oszd meg a partnereddel az alábbi linket, ezen az oldalon fogja tudni kitölteni:</p>
+                        <span class="generated-link"></span>
+                    </div>
+
+                    <div class="start-together">
+                        <p>Hajrá!</p>
+                    </div>
+                </div>
+
+        <div class="progress-bar"></div>
+
+        <div id="app">
+            <!-- <transition name="fade"> -->
+
+
+            <div class="columns">
+
+                <div class="main-column">
+
+                    <div class="questions" v-for="(question, index) in questions">
+                        <strong>${ question.question }</strong>
+
+                        <div class="answers" v-if="index == 6">
+
+                            <draggable class="list-group" v-model="question.answers" :group="`question.answers`" @start="drag=true" @end="drag=false, updateOrder()" v-bind="dragOptions">
+                                <transition-group type="transition" name="flip-list">
+                                    <div class="list-group-item sortable" v-for="(answer, index2) in question.answers" :key="index2" data-order="">${ answer }</div>
+                                </transition-group>
+                            </draggable>
+
+                        </div>
+                        <div class="answers" v-else>
+                            <label v-for="(answer, key) in question.answers"><input type="radio" :name="`question[${ index }]`" :value="`${ answer }`"> ${ answer }</label>
+                        </div>
+                    </div>
+
+           <!-- </transition>
+
+            <transition name="fade">
+
+            </transition> -->
+                </div>
+
+                <div class="partner-column" v-if="partner==true">
+
+                    <div class="questions" v-for="(question, index) in questions">
+                    <strong>${ question.question }</strong>
+
+                    <div class="answers partner" v-if="index == 6">
+
+                        <draggable class="list-group" v-model="question.answers" :group="`question.answers`" @start="drag=true" @end="drag=false, updateOrderPartner()" v-bind="dragOptions">
+                            <transition-group type="transition" name="flip-list">
+                                <div class="list-group-item sortable" v-for="(answer, index2) in question.answers" :key="index2" data-order="">${ answer }</div>
+                            </transition-group>
+                        </draggable>
+
+                    </div>
+                    <div class="answers" v-else>
+                        <label v-for="(answer, key) in question.answers"><input type="radio" :name="`question_partner[${ index }]`" :value="`${ answer }`"> ${ answer }</label>
+                    </div>
+                </div>
+
+
+
+                </div>
+
+                </div>
+
+                <div class="finish">
+                    <input type="hidden" value="" id="questionnaire_id">
+                    <button class="button save-answers" @click="saveAnswers()">Mentés</button>
+                </div>
+
+                <div class="closing">
+                    <p>Köszönjük, hogy válaszoltatok a kérdésekre!
+                        Tudtátok, hogy már néhány aprósággal feldobhatjátok a szexuális életeteket? Hogyan?
+                        <strong>Töltsétek le testre szabott, nyomtatható szexnaptárunkat, amely mindkettőtök örömére szolgál, hiszen a ti visszajelzéseitek alapján,
+                            az igényeiteknek megfelelően készítjük el azt.</strong>
+                            Ebben minden napra találtok egy ötletet – ennek a megvalósításával fellobbanthatjátok a régi tüzet.
+                    <br>
+                        Ide kattintva rendelhetitek meg a naptárt X Ft-ért. Saját bőrötökön fogjátok tapasztalni, hogy megéri kipróbálni… Mire várok még?
+                    </p>
+                </div>
+
+    </div>
+
+
+
+{% endblock %}
+
+{% block script %}
+    {{ parent() }}
+    <script src="//cdn.jsdelivr.net/npm/sortablejs@1.8.4/Sortable.min.js"></script>
+    <!-- CDNJS :: Vue.Draggable (https://cdnjs.com/) -->
+    <script src="//cdnjs.cloudflare.com/ajax/libs/Vue.Draggable/2.20.0/vuedraggable.umd.min.js"></script>
+    <script>
+
+    var questions = [];
+    var positions = [];
+    var positions_partner = [];
+    {% for index, question in questions %}
+        var questions_temp = {};
+        questions_temp.question = "{{ loop.index }}. {{ question.question }}";
+        questions_temp.answers = {{ question.answers|json_encode|raw }};
+
+        questions.push(questions_temp);
+
+        {% if index == 6 %}
+            {% for category in question.answers %}
+                positions.push("{{ category }}");
+                positions_partner.push("{{ category }}");
+            {% endfor %}
+        {% endif %}
+    {% endfor %}
+
+    //console.log(positions);
+
+        var app = new Vue({
+            delimiters: ['${', '}'],
+            el: '#app',
+            data: {
+                questions,
+                positions,
+                positions_partner,
+                partner: false
+            },
+            methods: {
+                updateOrder: function() {
+
+                    var positions = this.questions.map(function(question, index) {
+                        if(index == 6) {
+                            console.log(question.answers);
+                            app.positions = question.answers;
+                        }
+                    });
+                },
+                updateOrderPartner: function() {
+
+                    var positions = this.questions.map(function(question, index) {
+                        if(index == 6) {
+                            console.log(question.answers);
+                            app.positions_partner = question.answers;
+                        }
+                    });
+                },
+                saveAnswers: function() {
+
+                    let partner_col = document.querySelector(".partner-column");
+
+                    let answers_main = [];
+                    let answers_partner = [];
+                    let inputs = document.querySelectorAll(".main-column input:checked");
+                    for(var i = 0; i < inputs.length; i++) {
+
+                        let temp_answers = {};
+                        temp_answers.name = inputs[i].getAttribute("name");
+                        temp_answers.value = inputs[i].getAttribute("value");
+                        answers_main.push(temp_answers);
+                    }
+
+                    answers_main.push({"positions": app.positions});
+                    console.log(answers_main);
+
+                    if(partner_col != null) {
+
+                        let inputs = partner_col.querySelectorAll("input:checked");
+                        for(var i = 0; i < inputs.length; i++) {
+
+                            let temp_answers = {};
+                            temp_answers.name = inputs[i].getAttribute("name");
+                            temp_answers.value = inputs[i].getAttribute("value");
+                            answers_partner.push(temp_answers);
+                        }
+
+                        answers_partner.push({"positions": app.positions_partner});
+                    }
+
+                    /*
+                    let data = new FormData();
+                    data.append("save", "main");
+                    data.append("answers_main", answers_main);
+                    data.append("answers_second", answers_second);
+                    data.append("questionnaire_id", document.querySelector("#questionnaire_id").value.trim());
+
+                    */
+
+                    let data = {};
+                    data.answers_main = answers_main;
+                    data.answers_partner = answers_partner;
+                    data.questionnaire_id = document.querySelector("#questionnaire_id").value.trim();
+
+                    fetch("/save", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json"
+                        },
+                        body: JSON.stringify(data)
+                    }).then(response => response.json()).then(json => {
+
+
+                        if(json.result == 'success') {
+
+                            if(typeof json.data.second_link == "undefined") {
+                                document.querySelector(".start-together").style.display = "block";
+                            }
+                        }
+                    });
+
+                }
+
+            },
+            computed: {
+               dragOptions() {
+                  return {
+                    animation: 350,
+                    disabled: false,
+                    ghostClass: "ghost"
+                    };
+                }
+            }
+        });
+
+    </script>
+{% endblock %}

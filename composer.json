@@ -1,0 +1,9 @@
+{
+    "require": {
+        "slim/slim": "4.*",
+        "slim/psr7": "^1.1",
+        "selective/basepath": "^1.0",
+        "slim/twig-view": "^3.1",
+        "faapz/pdo": "^2.0"
+    }
+}
