@@ -36,9 +36,64 @@ $question_list = [
     "Mit látnál szívesen egy szexnaptárban? Ha időnként ismétlődő pózok is szerepelnének benne, vagy inkább napról napra újabbakat szeretnél kipróbálni?",
 ];
 
+$app->get('/test-cal', function ($request, $response, $args) use ($pdo) {
 
-$app->get('/import', function ($request, $response, $args) {
+    require_once "../class/Calendar.php";
+    $calendar = new Calendar($pdo);
+    $calendar->setFrequency([1, 1]);
+    $calendar->test();
+    $calendar->getPositions();
+});
 
+
+$app->get('/import', function ($request, $response, $args) use ($pdo) {
+
+    set_time_limit(60 * 60);
+
+    $row = 1;
+    if (($handle = fopen("../_data/sexpositionsclub_file_2020-09-01_20_09.csv", "r")) !== FALSE) {
+        while (($data = fgetcsv($handle, 1000, ",")) !== FALSE) {
+
+            if($row == 1) {
+                $row++;
+                continue;
+            }
+
+            $name = $data[1];
+            $tags = $data[2];
+
+            $tags_array = explode(", ", $tags);
+
+            $insertStatement = $pdo->insert([
+                "name_en" => $name,
+                "img" => $name . ".png",
+            ])
+                ->into("sexpositions");
+            $sexposition_id = $insertStatement->execute();
+
+            foreach($tags_array as $tag) {
+
+                $selectStatement = $pdo->select(['id'])
+                    ->from('tags')
+                    ->where(new \FaaPz\PDO\Clause\Conditional("name_en", "=", $tag));
+
+                $stmt = $selectStatement->execute();
+                $data_tag = $stmt->fetch();
+
+                $insertStatement = $pdo->insert([
+                    "position_id" => $sexposition_id,
+                    "tag_id" => $data_tag["id"],
+                ])
+                    ->into("sexpositionstags");
+                $insertStatement->execute();
+            }
+
+
+
+
+        }
+        fclose($handle);
+    }
 
 
     $files = scandir("gallery/sexpositionsclub_kepek");
@@ -50,8 +105,15 @@ $app->get('/import', function ($request, $response, $args) {
         }
     }
 
-    $view = Twig::fromRequest($request);
-    return $view->render($response, 'list.html.twig', ['images' => $images, 'folder' => 'sexpositionsclub_kepek']);
+
+    $data = array('data' => "imported");
+    $payload = json_encode($data);
+
+    $response->getBody()->write($payload);
+    return $response
+        ->withHeader('Content-Type', 'application/json')
+        ->withStatus(200);
+
 })->setName('root');
 
 
@@ -252,9 +314,9 @@ $app->post('/save', function ($request, $response, $args) use ($pdo, $question_l
 
 
         $answers_json = "";
-        if(!empty($post["answers_main"])) {
+        if(!empty($post["answer_main"])) {
 
-            foreach($post["answers_main"] as $key => $answers) {
+            foreach($post["answer_main"] as $key => $answers) {
 
                 if ($key == 7) {
 
@@ -283,9 +345,9 @@ $app->post('/save', function ($request, $response, $args) use ($pdo, $question_l
             $insertStatement->execute();
         }
 
-        if(!empty($post["answers_partner"])) {
+        if(!empty($post["answer_partner"])) {
 
-            foreach($post["answers_partner"] as $key => $answers) {
+            foreach($post["answer_partner"] as $key => $answers) {
 
                 if ($key == 7) {
 

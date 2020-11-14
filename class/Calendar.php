@@ -10,15 +10,28 @@ class Calendar
     private $sexpositions = [];
     private $html;
     private $months = [];
-    private $frequency;
+    private $frequency, $frequency_final;
     private $repeat = false;
     private $sexpositions_temp = [];
+    private $sex_dates = [];
+
+    public function setFrequency($data)
+    {
+        $this->frequency = $data;
+    }
 
     public function __construct($db_conn)
     {
         $this->db = $db_conn;
 
+        //$this->setMonths();
+        //$this->getAllDays();
+    }
+
+    public function test()
+    {
         $this->setMonths();
+        $this->getAllDays();
     }
 
     /*
@@ -59,20 +72,36 @@ class Calendar
 
                 $position_list[] = $json[7]->position_order;
 
+
+
                 if ($json[5]->answer == "Heti 1-2 alkalommal.") {
-                    $this->frequency = [1, 2];
+                    $frequencies[] = $this->frequency = [1, 2];
                 } else if ($json[5]->answer == "Heti 3-4 alkalommal.") {
-                    $this->frequency = [3, 4];
+                    $frequencies[] = $this->frequency = [3, 4];
                 } else if ($json[5]->answer == "Heti 5-6 alkalommal.") {
-                    $this->frequency = [5, 6];
+                    $frequencies[] = $this->frequency = [5, 6];
                 } else {
-                    $this->frequency = [7];
+                    $frequencies[] = $this->frequency = [7];
                 }
 
                 if (strpos($json[6]->answer, "egy-egy") !== false) {
                     $this->repeat = true;
                 }
             }
+
+            $this->frequency[0] = ($frequencies[0][0] + $frequencies[1][0]) / 2;
+            $this->frequency[1] = ($frequencies[0][1] + $frequencies[1][1]) / 2;
+
+            $position_order = [];
+
+            foreach($position_list[0] as $index => $position) {
+                foreach($position_list[1] as $index2 => $position2) {
+                    if($position == $position2) {
+                        $position_order[ round($index + $index2 / 2) ] = $position;
+                    }
+                }
+            }
+
         }
 
     }
@@ -150,7 +179,7 @@ class Calendar
     }
 
     /**
-     * 
+     *
      *
      * @return mixed
      */
@@ -291,26 +320,51 @@ class Calendar
      */
     public function getAllDays()
     {
+
+
+        // a hetek megszerzése évekre bontva, a 12 hónapra megfelelően
         foreach ($this->months as $month) {
             $days_in_month = $month->format("t");
 
             for ($day = 1; $day <= $days_in_month; $day++) {
 
-
                 $year = $month->format("Y");
-                $month = $month->format("m");
+                $month_ = $month->format("m");
+
+
+                $date_current = new DateTime();
+                $month_current = $date_current->format("m");
+                $day_current = $date_current->format("d");
+                if($month_ == $month_current) {
+                    if($day < $day_current) {
+                        continue;
+                    }
+                }
 
 
                 $day = sprintf("%02.02d", $day);
 
-                $week_number = date("W", strtotime($year . "-" . $month . "-" . $day));
+                $week_number = date("W", strtotime($year . "-" . $month_ . "-" . $day));
 
                 $weeks_array[$year][$week_number] = [];
-
-
             }
         }
 
+
+        // frekvencia
+        $freq_low = $this->frequency[0];
+        if (!empty($this->frequency[1])) {
+            $freq_high = $this->frequency[1];
+
+            $frequency = rand($freq_low, $freq_high);
+        } else {
+            $frequency = $this->frequency[0];
+        }
+
+        $this->frequency_final = $frequency;
+
+
+        // a korábbi év-hét tömb feldolgozása, a frekvenciának (heti gyakoriságnak) megfelelően feltöltjük a tömböt hónap-nap kulcsokkal
         if (!empty($weeks_array)) {
 
             foreach ($weeks_array as $year => $data) {
@@ -334,8 +388,7 @@ class Calendar
                     }
 
 
-                    echo "<pre>";
-                    print_r($randoms);
+
 
                     for ($i = 0; $i <= 6; $i++) {
 
@@ -354,6 +407,11 @@ class Calendar
                 }
 
             }
+
+            $this->sex_dates = $dates;
+
+            echo "<pre>";
+            print_r($dates);
         }
 
 
@@ -433,5 +491,38 @@ class Calendar
     public function saveIntoPDF()
     {
 
+    }
+
+
+    public function getPositions()
+    {
+
+        $count = 0;
+        foreach($this->sex_dates as $year => $data) {
+            foreach($data as $month => $data2) {
+                foreach($data2 as $day => $value) {
+                    if(!empty($value)) {
+                        $count++;
+                    }
+                }
+            }
+        }
+
+        $sexpositions_selected = [];
+        while(1==1) {
+
+            $selectStatement = $this->db->select(['id, img'])
+                ->from('sexpositions')
+                ->orderBy("RAND()")
+                ->limit(new \FaaPz\PDO\Clause\Limit(1));
+
+            $stmt = $selectStatement->execute();
+            $data = $stmt->fetch();
+
+            if(!empty($data)) {
+                $sexpositions_selected[] = $data[0]["id"];
+            }
+
+        }
     }
 }

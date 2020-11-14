@@ -55,20 +55,20 @@
 
                 <div class="main-column">
 
-                    <div class="questions" v-for="(question, index) in questions">
-                        <strong>${ question.question }</strong>
+                    <div class="questions" v-for="(item, index) in questionsA">
+                        <strong>${ item.question }</strong>
 
                         <div class="answers" v-if="index == 6">
 
-                            <draggable class="list-group" v-model="question.answers" :group="`question.answers`" @start="drag=true" @end="drag=false, updateOrder()" v-bind="dragOptions">
+                            <draggable class="list-group" v-model="item.answers" :group="`item.answers`" @start="drag=true" @end="drag=false, updateOrder()" v-bind="dragOptions">
                                 <transition-group type="transition" name="flip-list">
-                                    <div class="list-group-item sortable" v-for="(answer, index2) in question.answers" :key="index2" data-order="">${ answer }</div>
+                                    <div class="list-group-item sortable" v-for="(answer, index2) in item.answers" :key="answer" data-order="">${ answer }</div>
                                 </transition-group>
                             </draggable>
 
                         </div>
                         <div class="answers" v-else>
-                            <label v-for="(answer, key) in question.answers"><input type="radio" :name="`question[${ index }]`" :value="`${ answer }`"> ${ answer }</label>
+                            <label v-for="(answer, key) in item.answers"><input type="radio" :name="`answer_main[${ index }]`" :value="`${ answer }`"> ${ answer }</label>
                         </div>
                     </div>
 
@@ -81,7 +81,7 @@
 
                 <div class="partner-column" v-if="partner==true">
 
-                    <div class="questions" v-for="(question, index) in questions">
+                    <div class="questions" v-for="(question, index) in questionsB">
                     <strong>${ question.question }</strong>
 
                     <div class="answers partner" v-if="index == 6">
@@ -94,7 +94,7 @@
 
                     </div>
                     <div class="answers" v-else>
-                        <label v-for="(answer, key) in question.answers"><input type="radio" :name="`question_partner[${ index }]`" :value="`${ answer }`"> ${ answer }</label>
+                        <label v-for="(answer, key) in question.answers"><input type="radio" :name="`answer_partner[${ index }]`" :value="`${ answer }`"> ${ answer }</label>
                     </div>
                 </div>
 
@@ -133,55 +133,48 @@
     <script src="//cdnjs.cloudflare.com/ajax/libs/Vue.Draggable/2.20.0/vuedraggable.umd.min.js"></script>
     <script>
 
-    var questions = [];
-    var positions = [];
-    var positions_partner = [];
+    const defaultQuestions = () => [
     {% for index, question in questions %}
-        var questions_temp = {};
-        questions_temp.question = "{{ loop.index }}. {{ question.question }}";
-        questions_temp.answers = {{ question.answers|json_encode|raw }};
-
-        questions.push(questions_temp);
-
-        {% if index == 6 %}
-            {% for category in question.answers %}
-                positions.push("{{ category }}");
-                positions_partner.push("{{ category }}");
-            {% endfor %}
-        {% endif %}
+    {
+        "question": "{{ loop.index }}. {{ question.question }}",
+        "answers": {{ question.answers|json_encode|raw }}
+    },
     {% endfor %}
+    ];
 
-    //console.log(positions);
+    const questionsA = {...defaultQuestions()};
+    const questionsB = {...defaultQuestions()};
+
+    console.log(questionsA);
 
         var app = new Vue({
             delimiters: ['${', '}'],
             el: '#app',
-            data: {
-                questions,
-                positions,
-                positions_partner,
-                partner: false
+            components: {
+                vuedraggable: "draggable"
+            },
+            data() {
+                return {
+                    questionsA,
+                    questionsB,
+                    positions: [],
+                    positions_partner: [],
+                    partner: false
+                }
             },
             methods: {
                 updateOrder: function() {
 
-                    var positions = this.questions.map(function(question, index) {
-                        if(index == 6) {
-                            console.log(question.answers);
-                            app.positions = question.answers;
-                        }
-                    });
+                    this.positions = this.questionsA[6].answers;
                 },
                 updateOrderPartner: function() {
 
-                    var positions = this.questions.map(function(question, index) {
-                        if(index == 6) {
-                            console.log(question.answers);
-                            app.positions_partner = question.answers;
-                        }
-                    });
+                    this.positions_partner = this.questionsB[6].answers;
                 },
                 saveAnswers: function() {
+
+                    //console.log(this.positions);
+                    //console.log(this.positions_partner);
 
                     let partner_col = document.querySelector(".partner-column");
 
@@ -196,7 +189,7 @@
                         answers_main.push(temp_answers);
                     }
 
-                    answers_main.push({"positions": app.positions});
+                    answers_main.push({"positions": this.positions});
                     console.log(answers_main);
 
                     if(partner_col != null) {
@@ -210,7 +203,7 @@
                             answers_partner.push(temp_answers);
                         }
 
-                        answers_partner.push({"positions": app.positions_partner});
+                        answers_partner.push({"positions": this.positions_partner});
                     }
 
                     /*
@@ -226,6 +219,9 @@
                     data.answers_main = answers_main;
                     data.answers_partner = answers_partner;
                     data.questionnaire_id = document.querySelector("#questionnaire_id").value.trim();
+
+                    console.log(data);
+                    return;
 
                     fetch("/save", {
                         method: "POST",
