@@ -14,6 +14,7 @@ class Calendar
     private $repeat = false;
     private $sexpositions_temp = [];
     private $sex_dates = [];
+    private $merged_preferences = [];
 
     public function setFrequency($data)
     {
@@ -411,7 +412,7 @@ class Calendar
             $this->sex_dates = $dates;
 
             echo "<pre>";
-            print_r($dates);
+            //print_r($dates);
         }
 
 
@@ -524,5 +525,165 @@ class Calendar
             }
 
         }
+    }
+
+    public function setTestData($order1, $order2)
+    {
+        foreach($order1 as $index => $pose) {
+            foreach($order2 as $index2 => $pose2) {
+                if($pose == $pose2) {
+                    $this->merged_preferences[round(($index + $index2) / 2)] = $pose;
+                }
+            }
+
+        }
+
+        ksort($this->merged_preferences);
+        print_R($this->merged_preferences);
+    }
+
+    public function calculateCategories()
+    {
+
+        //10 kategória
+        /*
+        for($i = 1; $i <= 10; $i++) {
+            $array[$i] = $i;
+        }
+        */
+
+//kategóriák száma
+        $preferences_keys = array_keys($this->merged_preferences);
+        $length = rand(3, 10);
+        $array2 = [];
+
+        do {
+            $selected = rand(1, count($preferences_keys) - 1);
+
+            if(!in_array($selected, $array2)) {
+                $array2[] = $preferences_keys[$selected];
+            }
+        } while( count($array2) != $length );
+
+//kimaradt kategóriák
+        $temp_r = [];
+        foreach($this->merged_preferences as $index => $item) {
+            if(!in_array($index, $array2)) {
+                $temp_r[] = $index;
+            }
+        }
+        echo "******************";
+        echo "<br>";
+        echo "kiválasztott kategóriák";
+        echo "<pre>";
+        print_R($array2);
+        echo "<br>";
+        echo "******************";
+        echo "<br>";
+        echo "kimaradt kategóriák";
+        echo "<br>";
+        print_R($temp_r);
+
+// 52 alkalomra való súlyozás
+        $avg = 52 / array_sum($array2);
+        $avg_rounded = round($avg);
+
+        echo '$avg: ' . $avg . ' / $avg_rounded: ' . $avg_rounded;
+        echo "<br>";
+        echo "<br>";
+
+        foreach($temp_r as $key => $temp_item) {
+            $temp_r2[$temp_item] = round($temp_item * $avg);
+        }
+
+//kimaradtak alkalmai arányosan
+        echo "<br>";
+        echo "kimaradt kategóriák arányosan";
+        echo "<br>";
+        print_r($temp_r2);
+//kimaradtak alkalmainak összege
+        $temp_sum = array_sum($temp_r2);
+
+        echo "<br>";
+        echo "kimaradt kategóriák alkalmainak összege";
+        echo "<br>";
+
+        echo $temp_sum . "//////////////////<br><br><br>";
+
+        $array3 = [];
+
+//kiválasztott kategóriák alkamai
+        foreach($array2 as $val) {
+            echo $val . ": " . ($val * $avg) . " (" . round($val * $avg) . ") kerekitve: " . ($val * $avg_rounded) . "<br>";
+
+            $times = round($val * $avg);
+
+            for($i = 1; $i <= $times; $i++) {
+                $array3[$val][$i] = [$val];
+            }
+
+        }
+        echo "******************";
+        echo "<br>";
+        echo "<br>";
+        echo "kiválasztott kategóriák alkalmai";
+        echo "<br>";
+        print_r($array3);
+
+
+
+
+        foreach($array3 as $category => $item3) {
+
+            foreach($item3 as $index => $valueX) {
+
+                /*
+                 * x% esély van, hogy a kimaradt kategóriákból bepakol a kiválaszottak közé
+                 * */
+                $chance_ = rand(1, 100);
+                if($chance_ < /*50*/ $temp_sum) {
+
+                    if($temp_sum > 0) {
+
+                        do {
+
+                            $selected = rand(0, count($temp_r) - 1);
+                            $key_ = $temp_r[$selected];
+
+                            //echo "******:" . $temp_r2[$key_] . "----" . $selected . "<br>";
+                            //var_dump(!empty($temp_r[$selected]) && $temp_r2[$key_] > 0);
+                            //die();
+
+                        } while ( empty($temp_r[$selected]) || $temp_r2[$key_] <= 0 );
+
+                        $array4[$category][$index] = [$category, $temp_r[$selected]];
+
+                        $temp_r2[$key_]--;
+                        $temp_sum--;
+                    }
+
+                } else {
+                    $array4[$category][$index] = [$category];
+                }
+
+            }
+
+
+        }
+
+        echo "******************";
+        echo "<br>";
+        echo "<br>";
+        echo "kategóriák beosztása";
+        echo "<br>";
+        print_r($array4);
+
+        echo "******************";
+        echo "<br>";
+        echo "<br>";
+        echo "fennmaradó kategóriák";
+        echo "<br>";
+        print_r($temp_r2);
+
     }
 }

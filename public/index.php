@@ -42,7 +42,68 @@ $app->get('/test-cal', function ($request, $response, $args) use ($pdo) {
     $calendar = new Calendar($pdo);
     $calendar->setFrequency([1, 1]);
     $calendar->test();
-    $calendar->getPositions();
+
+    $pose_order1 = [
+        "doggy style",
+        "rear entry",
+        "woman on top",
+        "standing",
+        "spooning",
+        "blowjob",
+        "oral sex",
+        "kneeling",
+        "69 sex position",
+        "right angle",
+        "cunnilingus",
+        "lying down",
+        "anal sex",
+        "sitting",
+        "reverse",
+        "cowgirl",
+        "man on top",
+        "from behind",
+        "face to face",
+        "criss cross",
+        "sideways",
+    ];
+
+    $pose_order2 = [
+        "cunnilingus",
+        "anal sex",
+        "from behind",
+        "rear entry",
+        "face to face",
+        "standing",
+        "blowjob",
+        "oral sex",
+        "man on top",
+        "kneeling",
+        "right angle",
+        "doggy style",
+        "lying down",
+        "sitting",
+        "woman on top",
+        "reverse",
+        "cowgirl",
+        "69 sex position",
+        "criss cross",
+        "sideways",
+        "spooning"
+    ];
+
+    //shuffle($pose_order1);
+    //shuffle($pose_order2);
+
+    $calendar->setTestData($pose_order1, $pose_order2);
+
+    $calendar->calculateCategories();
+
+    //$calendar->getPositions();
+
+    $response->getBody()->write(json_encode([]));
+    return $response
+        ->withHeader('Content-Type', 'application/json')
+        ->withStatus(200);
 });
 
 
