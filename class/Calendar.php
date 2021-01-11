@@ -311,7 +311,7 @@ class Calendar
      */
     public function setMonths()
     {
-        for ($i = 0; $i < 12; $i++) {
+        for ($i = 0; $i <= 12; $i++) {
             $this->months[] = new DateTime("today +" . $i . " months");
         }
     }
@@ -321,7 +321,6 @@ class Calendar
      */
     public function getAllDays()
     {
-
 
         // a hetek megszerzése évekre bontva, a 12 hónapra megfelelően
         foreach ($this->months as $month) {
@@ -334,14 +333,19 @@ class Calendar
 
 
                 $date_current = new DateTime();
+                $year_current = $date_current->format("Y");
                 $month_current = $date_current->format("m");
                 $day_current = $date_current->format("d");
-                if($month_ == $month_current) {
+
+                if($month_ == $month_current && $year == $year_current) {
                     if($day < $day_current) {
                         continue;
                     }
+                } else if($month_ == $month_current && $year == $year_current + 1) {
+                    if($day >= $day_current) {
+                        continue;
+                    }
                 }
-
 
                 $day = sprintf("%02.02d", $day);
 
@@ -364,6 +368,8 @@ class Calendar
 
         $this->frequency_final = $frequency;
 
+        echo "<pre>";
+        print_R($weeks_array);
 
         // a korábbi év-hét tömb feldolgozása, a frekvenciának (heti gyakoriságnak) megfelelően feltöltjük a tömböt hónap-nap kulcsokkal
         if (!empty($weeks_array)) {
@@ -395,6 +401,18 @@ class Calendar
 
                         $month = date("m", strtotime($year . "W" . $week . " +" . $i . "days"));
                         $day = date("d", strtotime($year . "W" . $week . " +" . $i . "days"));
+                        $year2 = date("Y", strtotime($year . "W" . $week . " +" . $i . "days"));
+
+                        if($month == 12) {
+
+                            if($year == "2021") {
+                                echo $year2 . "::: " . $day . "******<br>";
+                            }
+                            if($year == "2022") {
+                                echo $year2 . "::: " . $day . "||||||||<br>";
+                            }
+
+                        }
 
                         $dates[$year][$month][$day] = "";
                         $this->sexpositions[$year][$month][$day] = "";
@@ -412,7 +430,7 @@ class Calendar
             $this->sex_dates = $dates;
 
             echo "<pre>";
-            //print_r($dates);
+            print_r($dates);
         }
 
 
@@ -512,13 +530,9 @@ class Calendar
         $sexpositions_selected = [];
         while(1==1) {
 
-            $selectStatement = $this->db->select(['id, img'])
-                ->from('sexpositions')
-                ->orderBy("RAND()")
-                ->limit(new \FaaPz\PDO\Clause\Limit(1));
-
-            $stmt = $selectStatement->execute();
-            $data = $stmt->fetch();
+            $query = $this->db->prepare("SELECT * FROM sexpositions ORDER BY RAND() LIMIT 1");
+            $query->execute();
+            $data = $query->fetch();
 
             if(!empty($data)) {
                 $sexpositions_selected[] = $data[0]["id"];
@@ -560,7 +574,7 @@ class Calendar
         do {
             $selected = rand(1, count($preferences_keys) - 1);
 
-            if(!in_array($selected, $array2)) {
+            if(!in_array($preferences_keys[$selected], $array2)) {
                 $array2[] = $preferences_keys[$selected];
             }
         } while( count($array2) != $length );
@@ -641,7 +655,7 @@ class Calendar
                  * x% esély van, hogy a kimaradt kategóriákból bepakol a kiválaszottak közé
                  * */
                 $chance_ = rand(1, 100);
-                if($chance_ < /*50*/ $temp_sum) {
+                if(1 == 0 && $chance_ < /*50*/ $temp_sum) {
 
                     if($temp_sum > 0) {
 
@@ -677,6 +691,134 @@ class Calendar
         echo "kategóriák beosztása";
         echo "<br>";
         print_r($array4);
+
+        ob_clean();
+
+
+        $categories_temp = [];
+        $categories_temp2 = $categories_temp;
+
+        foreach($array4 as $category => $item) {
+
+            //print_r($item);
+            foreach($item as $index => $data_) {
+                //print_r($data_);
+
+                //echo "<br>kategóriák szűrve:******************* ";
+                //print_R($categories_temp);
+
+                if(!empty($data_[1])) {
+/*
+                    $sql = "SELECT * FROM sexpositionstags
+                            WHERE tag_id IN (:tags_not)
+                            GROUP BY position_id";
+*/
+                    if(!empty($categories_temp)) {
+                        $sql = "SELECT * FROM sexpositionstags
+                            WHERE tag_id IN (" . implode(", ", $categories_temp) . ")
+                            GROUP BY position_id
+                            ORDER BY id";
+                        $query = $this->db->prepare($sql);
+                        $query->execute([
+                            //"tags_not" => implode(", ", $categories_temp)
+                        ]);
+                        $rows = $query->fetchAll(PDO::FETCH_ASSOC);
+
+                        $positions_to_filter = [];
+                        foreach ($rows as $row) {
+                            $positions_to_filter[] = $row["position_id"];
+                        }
+                    }
+
+                    $sql_ext = "";
+                    if(!empty($positions_to_filter)) {
+                        $sql_ext = " AND sp_t.position_id NOT IN (" . implode(", ", $positions_to_filter) . ")";
+                    }
+
+                    $sql = "SELECT sp.name_en 
+                    FROM sexpositions sp
+                    LEFT JOIN sexpositionstags sp_t ON sp.id = sp_t.position_id
+                    WHERE sp_t.tag_id IN (:tags) " . $sql_ext . "
+                    ORDER BY RAND()
+                    LIMIT 1";
+
+
+
+                    echo "<br>---------filter1-----";
+print_r($positions_to_filter);
+
+                    $query = $this->db->prepare($sql);
+                    $query->execute([
+                        "tags" => implode(", ", [$data_[0], $data_[1]]),
+                        //"positions_not" => "(" . implode(", ", $positions_to_filter) . ")"
+                    ]);
+                    $row = $query->fetchAll(PDO::FETCH_ASSOC);
+
+                    $final[$category][$index] = $row[0]["name_en"];
+
+                } else {
+/*
+                    $sql = "SELECT * FROM sexpositionstags
+                            WHERE tag_id IN (:tags_not)
+                            GROUP BY position_id";
+*/
+                    if(!empty($categories_temp)) {
+
+                        $sql = "SELECT * FROM sexpositionstags
+                            WHERE tag_id IN (" . implode(", ", $categories_temp) . ")
+                            GROUP BY position_id
+                            ORDER BY id";
+
+                        $query = $this->db->prepare($sql);
+                        $query->execute([
+                            //"tags_not" => implode(", ", $categories_temp)
+                        ]);
+                        $rows = $query->fetchAll(PDO::FETCH_ASSOC);
+
+                        $positions_to_filter = [];
+                        foreach ($rows as $row) {
+                            $positions_to_filter[] = $row["position_id"];
+                        }
+
+                        echo "<br>---------filter2-----";
+                        print_r($positions_to_filter);
+
+                    }
+
+                    $sql_ext = "";
+                    if(!empty($positions_to_filter)) {
+                        $sql_ext = " AND sp_t.position_id NOT IN (" . implode(", ", $positions_to_filter) . ")";
+                    }
+
+                    $sql = "SELECT sp.name_en 
+                    FROM sexpositions sp
+                    LEFT JOIN sexpositionstags sp_t ON sp.id = sp_t.position_id
+                    WHERE sp_t.tag_id = :tag " . $sql_ext . "
+                    ORDER BY RAND()
+                    LIMIT 1";
+
+                    $query = $this->db->prepare($sql);
+                    $query->execute([
+                        "tag" => $data_[0],
+                        //"positions_not" => x
+                    ]);
+                    $row = $query->fetchAll(PDO::FETCH_ASSOC);
+
+                    $final[$category][$index] = $row[0]["name_en"];
+
+                }
+
+            }
+            $categories_temp[] = $category;
+
+        }
+
+        echo "******************";
+        echo "<br>";
+        echo "<br>";
+        echo "végleges behelyettesítve?";
+        echo "<br>";
+        print_r($final);
 
         echo "******************";
         echo "<br>";

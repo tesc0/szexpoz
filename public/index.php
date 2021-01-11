@@ -8,14 +8,14 @@ use Slim\Views\TwigMiddleware;
 require __DIR__ . '/../vendor/autoload.php';
 
 require_once "../config/info.php";
-$db = new PDO("mysql:host=" . $config['db']['host'] . ";dbname=" . $config['db']['database'], $config['db']['username'], $config['db']['password'] );
-
+$pdo = $db = new PDO("mysql:host=" . $config['db']['host'] . ";dbname=" . $config['db']['database'], $config['db']['username'], $config['db']['password'] );
+/*
 $dsn = 'mysql:host=' . $config['db']['host'] . ';dbname=' . $config['db']['database'] . ';charset=utf8';
 $usr = $config['db']['username'];
 $pwd = $config['db']['password'];
-
+*/
 //https://github.com/FaaPz/PDO
-$pdo = new \FaaPz\PDO\Database($dsn, $usr, $pwd);
+//$pdo = new \FaaPz\PDO\Database($dsn, $usr, $pwd);
 
 // Create App
 $app = AppFactory::create();
@@ -94,9 +94,9 @@ $app->get('/test-cal', function ($request, $response, $args) use ($pdo) {
     //shuffle($pose_order1);
     //shuffle($pose_order2);
 
-    $calendar->setTestData($pose_order1, $pose_order2);
+    //$calendar->setTestData($pose_order1, $pose_order2);
 
-    $calendar->calculateCategories();
+    //$calendar->calculateCategories();
 
     //$calendar->getPositions();
 
