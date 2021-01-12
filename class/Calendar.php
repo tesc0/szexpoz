@@ -15,11 +15,9 @@ class Calendar
     private $sexpositions_temp = [];
     private $sex_dates = [];
     private $merged_preferences = [];
-
-    public function setFrequency($data)
-    {
-        $this->frequency = $data;
-    }
+    private $startDate = "";
+    private $is53Week = false;
+    private $positions_leftover = [];
 
     public function __construct($db_conn)
     {
@@ -29,9 +27,14 @@ class Calendar
         //$this->getAllDays();
     }
 
+    public function setFrequency($data)
+    {
+        $this->frequency = $data;
+    }
+
     public function test()
     {
-        $this->setMonths();
+        $this->setStartDate( date("Y-m-d") );
         $this->getAllDays();
     }
 
@@ -73,8 +76,6 @@ class Calendar
 
                 $position_list[] = $json[7]->position_order;
 
-
-
                 if ($json[5]->answer == "Heti 1-2 alkalommal.") {
                     $frequencies[] = $this->frequency = [1, 2];
                 } else if ($json[5]->answer == "Heti 3-4 alkalommal.") {
@@ -82,7 +83,7 @@ class Calendar
                 } else if ($json[5]->answer == "Heti 5-6 alkalommal.") {
                     $frequencies[] = $this->frequency = [5, 6];
                 } else {
-                    $frequencies[] = $this->frequency = [7];
+                    $frequencies[] = $this->frequency = [7, 7];
                 }
 
                 if (strpos($json[6]->answer, "egy-egy") !== false) {
@@ -103,80 +104,11 @@ class Calendar
                 }
             }
 
-        }
-
-    }
-
-    public function fillDateArray()
-    {
-
-        $freq_low = $this->frequency[0];
-        if (!empty($this->frequency[1])) {
-            $freq_high = $this->frequency[1];
-
-            $frequency = rand($freq_low, $freq_high);
-        } else {
-            $frequency = $this->frequency[0];
-        }
-
-        foreach ($this->months as $month) {
-            $days_in_month = $month->format("t");
-
-            for ($day = 1; $day <= $days_in_month; $day++) {
-
-
-                $year = $month->format("Y");
-                $month = $month->format("m");
-
-
-                $day = sprintf("%02.02d", $day);
-
-                $week_number = date("W", strtotime($year . "-" . $month . "-" . $day));
-
-                $weeks_array[$year][$week_number] = [];
-
-            }
-        }
-
-        if (!empty($weeks_array)) {
-
-            foreach ($weeks_array as $year => $data) {
-                foreach ($data as $week => $value) {
-                    //echo "<br>";
-                    //echo date("Y-m-d", strtotime($year . "W" . $week));
-                    $randoms = [];
-
-
-                    $ok = false;
-                    while (!$ok) {
-                        $random_day = rand(1, 7);
-
-                        if (!in_array($random_day, $randoms)) {
-                            $randoms[] = $random_day;
-                        }
-
-                        if (count($randoms) == $frequency) {
-                            $ok = true;
-                        }
-                    }
-
-                    for ($i = 0; $i <= 6; $i++) {
-
-                        $month = date("m", strtotime($year . "W" . $week . " +" . $i . "days"));
-                        $day = date("d", strtotime($year . "W" . $week . " +" . $i . "days"));
-
-                        $dates[$year][$month][$day] = "";
-                        foreach ($randoms as $random_day) {
-                            if ($random_day == date("N", strtotime($year . "-" . $month . "-" . $day))) {
-                                $dates[$year][$month][$day] = $this->getSexPosition();
-                            }
-                        }
-
-                    }
-                }
-            }
+            $this->merged_preferences = $position_order;
+            ksort($this->merged_preferences);
 
         }
+
     }
 
     /**
@@ -187,133 +119,20 @@ class Calendar
     public function getSexPosition()
     {
 
-        $files = scandir("gallery/sexpositionsclub_kepek");
 
-        $images = [];
-        foreach ($files as $file) {
-            if ($file != ".." && $file != ".") {
-                $images[] = $file;
-            }
-        }
-
-        $ok = false;
-
-        do {
-            $index = rand(0, count($images) - 1);
-            $selected_position = $images[$index];
-
-            if (empty($this->sexpositions_temp)) {
-                $this->sexpositions_temp[] = $selected_position;
-                $ok = true;
-            } else {
-                if ($this->repeat) {
-                    $this->sexpositions_temp[] = $selected_position;
-                    $ok = true;
-                } else {
-                    if(!in_array($selected_position, $this->sexpositions_temp)) {
-                        $this->sexpositions_temp[] = $selected_position;
-                        $ok = true;
-                    }
-                }
-            }
-        } while(!$ok);
-
-        return $selected_position;
-    }
-
-    /*
-     * szexpozíciók feltöltése nap szerint
-     */
-    public function fillPositions()
-    {
-
-        $util = new Util();
-
-        $files = scandir("gallery/sexpositionsclub_kepek");
-
-        $images = [];
-        foreach ($files as $file) {
-            if ($file != ".." && $file != ".") {
-                $images[] = $file;
-            }
-        }
-
-        $freq_low = $this->frequency[0];
-        if (!empty($this->frequency[1])) {
-            $freq_high = $this->frequency[1];
-
-            $frequency = rand($freq_low, $freq_high);
-        } else {
-            $frequency = $this->frequency[0];
-        }
-
-        foreach ($this->sexpositions as $year => $data) {
-            foreach ($data as $week => $value) {
-                foreach ($value as $day => $item) {
-
-                    $randoms = [];
-
-
-                    $ok = false;
-                    while (!$ok) {
-                        $random_day = rand(1, 7);
-
-                        if (!in_array($random_day, $randoms)) {
-                            $randoms[] = $random_day;
-                        }
-
-                        if (count($randoms) == $frequency) {
-                            $ok = true;
-                        }
-                    }
-
-
-                    for ($i = 0; $i <= 6; $i++) {
-
-                        $month = date("m", strtotime($year . "W" . $week . " +" . $i . "days"));
-                        $day = date("d", strtotime($year . "W" . $week . " +" . $i . "days"));
-
-                        $dates[$year][$month][$day] = "";
-                        foreach ($randoms as $random_day) {
-                            if ($random_day == date("N", strtotime($year . "-" . $month . "-" . $day))) {
-                                $dates[$year][$month][$day] = 1;
-                            }
-                        }
-
-                    }
-
-
-                    if ($this->repeat) {
-                        $this->sexpositions[$year][$month][$day] = $images[rand(0, count($images))];
-                    } else {
-
-                        $ok = false;
-                        do {
-                            $random_pose = $images[rand(0, count($images))];
-
-                            if (!$util->in_array_r($random_pose, $this->sexpositions)) {
-                                $ok = true;
-                            }
-
-                        } while (!$ok);
-
-                        if ($ok) {
-                            $this->sexpositions[$year][$month][$day] = $random_pose;
-                        }
-                    }
-                }
-            }
-        }
     }
 
     /*
      * hónapok beállítása
      */
-    public function setMonths()
+    public function setStartDate($date)
     {
-        for ($i = 0; $i <= 12; $i++) {
-            $this->months[] = new DateTime("today +" . $i . " months");
-        }
+        $this->startDate = $date;
+
+        $date_temp = new DateTime($date);
+        $date_temp->setISODate($date_temp->format("Y"), 53);
+
+        $this->is53Week = ($date_temp->format("W") === "53") ? true : false;
     }
 
     /*
@@ -323,38 +142,22 @@ class Calendar
     {
 
         // a hetek megszerzése évekre bontva, a 12 hónapra megfelelően
-        foreach ($this->months as $month) {
-            $days_in_month = $month->format("t");
+        $begin = new DateTime($this->startDate);
+        $end = new DateTime();
+        $end = $end->modify( '+1 year' );
 
-            for ($day = 1; $day <= $days_in_month; $day++) {
+        $interval = new DateInterval('P1W');
+        $daterange = new DatePeriod($begin, $interval ,$end);
 
-                $year = $month->format("Y");
-                $month_ = $month->format("m");
+        foreach($daterange as $date){
+            $year = $date->format("Y");
+            $month = $date->format("m");
+            $day = $date->format("d");
+            $week = $date->format("W");
 
-
-                $date_current = new DateTime();
-                $year_current = $date_current->format("Y");
-                $month_current = $date_current->format("m");
-                $day_current = $date_current->format("d");
-
-                if($month_ == $month_current && $year == $year_current) {
-                    if($day < $day_current) {
-                        continue;
-                    }
-                } else if($month_ == $month_current && $year == $year_current + 1) {
-                    if($day >= $day_current) {
-                        continue;
-                    }
-                }
-
-                $day = sprintf("%02.02d", $day);
-
-                $week_number = date("W", strtotime($year . "-" . $month_ . "-" . $day));
-
-                $weeks_array[$year][$week_number] = [];
-            }
+            $weeks_array[$year][$week] = [];
         }
-
+//print_R($weeks_array);
 
         // frekvencia
         $freq_low = $this->frequency[0];
@@ -368,8 +171,6 @@ class Calendar
 
         $this->frequency_final = $frequency;
 
-        echo "<pre>";
-        print_R($weeks_array);
 
         // a korábbi év-hét tömb feldolgozása, a frekvenciának (heti gyakoriságnak) megfelelően feltöltjük a tömböt hónap-nap kulcsokkal
         if (!empty($weeks_array)) {
@@ -395,30 +196,24 @@ class Calendar
                     }
 
 
-
-
                     for ($i = 0; $i <= 6; $i++) {
+
+                        $year_ = $year;
 
                         $month = date("m", strtotime($year . "W" . $week . " +" . $i . "days"));
                         $day = date("d", strtotime($year . "W" . $week . " +" . $i . "days"));
                         $year2 = date("Y", strtotime($year . "W" . $week . " +" . $i . "days"));
 
-                        if($month == 12) {
+                        //echo $year2 . "---" . $year . "W" . $week . " +" . $i . "days";
 
-                            if($year == "2021") {
-                                echo $year2 . "::: " . $day . "******<br>";
-                            }
-                            if($year == "2022") {
-                                echo $year2 . "::: " . $day . "||||||||<br>";
-                            }
-
+                        if($year2 == $year + 1) {
+                            $year_ = $year2;
                         }
 
-                        $dates[$year][$month][$day] = "";
-                        $this->sexpositions[$year][$month][$day] = "";
+                        $dates[$year_][$month][$day] = "";
                         foreach ($randoms as $random_day) {
-                            if ($random_day == date("N", strtotime($year . "-" . $month . "-" . $day))) {
-                                $dates[$year][$month][$day] = 1;
+                            if ($random_day == date("N", strtotime($year_ . "-" . $month . "-" . $day))) {
+                                $dates[$year_][$month][$day] = 1;
                             }
                         }
 
@@ -428,9 +223,10 @@ class Calendar
             }
 
             $this->sex_dates = $dates;
-
+/*
             echo "<pre>";
             print_r($dates);
+*/
         }
 
 
@@ -513,8 +309,19 @@ class Calendar
     }
 
 
-    public function getPositions()
+    public function sortPositionsForYear()
     {
+
+        foreach($this->sexpositions as $item) {
+            foreach($item as $position_name) {
+                $this->sexpositions_temp[] = $position_name;
+            }
+        }
+
+        shuffle($this->sexpositions_temp);
+        //echo count($this->sexpositions_temp);
+        echo "<pre>";
+        //print_R($this->sex_dates);
 
         $count = 0;
         foreach($this->sex_dates as $year => $data) {
@@ -522,23 +329,24 @@ class Calendar
                 foreach($data2 as $day => $value) {
                     if(!empty($value)) {
                         $count++;
+
+                        $rand_key = array_rand($this->sexpositions_temp, 1);
+
+                        echo $rand_key . "<br>";
+
+                        $this->sex_dates[$year][$month][$day] = $this->sexpositions_temp[$rand_key];
+                        unset($this->sexpositions_temp[$rand_key]);
+
+                        shuffle($this->sexpositions_temp);
+
+                        //print_r($this->sexpositions_temp);
                     }
                 }
             }
         }
 
-        $sexpositions_selected = [];
-        while(1==1) {
 
-            $query = $this->db->prepare("SELECT * FROM sexpositions ORDER BY RAND() LIMIT 1");
-            $query->execute();
-            $data = $query->fetch();
-
-            if(!empty($data)) {
-                $sexpositions_selected[] = $data[0]["id"];
-            }
-
-        }
+        print_R($this->sex_dates);
     }
 
     public function setTestData($order1, $order2)
@@ -553,11 +361,12 @@ class Calendar
         }
 
         ksort($this->merged_preferences);
-        print_R($this->merged_preferences);
+        //print_R($this->merged_preferences);
     }
 
     public function calculateCategories()
     {
+        echo "<pre>";
 
         //10 kategória
         /*
@@ -586,6 +395,7 @@ class Calendar
                 $temp_r[] = $index;
             }
         }
+        /*
         echo "******************";
         echo "<br>";
         echo "kiválasztott kategóriák";
@@ -597,38 +407,46 @@ class Calendar
         echo "kimaradt kategóriák";
         echo "<br>";
         print_R($temp_r);
+        */
 
 // 52 alkalomra való súlyozás
-        $avg = 52 / array_sum($array2);
-        $avg_rounded = round($avg);
 
+        $number_ = ($this->is53Week) ? 53 : 52;
+
+        $avg = $number_ / array_sum($array2);
+        $avg_rounded = round($avg);
+/*
         echo '$avg: ' . $avg . ' / $avg_rounded: ' . $avg_rounded;
         echo "<br>";
         echo "<br>";
-
+*/
         foreach($temp_r as $key => $temp_item) {
             $temp_r2[$temp_item] = round($temp_item * $avg);
         }
 
 //kimaradtak alkalmai arányosan
+
         echo "<br>";
         echo "kimaradt kategóriák arányosan";
         echo "<br>";
         print_r($temp_r2);
+
+        $this->positions_leftover = $temp_r2;
+
 //kimaradtak alkalmainak összege
         $temp_sum = array_sum($temp_r2);
-
+/*
         echo "<br>";
         echo "kimaradt kategóriák alkalmainak összege";
         echo "<br>";
 
         echo $temp_sum . "//////////////////<br><br><br>";
-
+*/
         $array3 = [];
 
 //kiválasztott kategóriák alkamai
         foreach($array2 as $val) {
-            echo $val . ": " . ($val * $avg) . " (" . round($val * $avg) . ") kerekitve: " . ($val * $avg_rounded) . "<br>";
+            //echo $val . ": " . ($val * $avg) . " (" . round($val * $avg) . ") kerekitve: " . ($val * $avg_rounded) . "<br>";
 
             $times = round($val * $avg);
 
@@ -637,13 +455,14 @@ class Calendar
             }
 
         }
+        /*
         echo "******************";
         echo "<br>";
         echo "<br>";
         echo "kiválasztott kategóriák alkalmai";
         echo "<br>";
         print_r($array3);
-
+*/
 
 
 
@@ -684,7 +503,7 @@ class Calendar
 
 
         }
-
+/*
         echo "******************";
         echo "<br>";
         echo "<br>";
@@ -693,7 +512,7 @@ class Calendar
         print_r($array4);
 
         ob_clean();
-
+*/
 
         $categories_temp = [];
         $categories_temp2 = $categories_temp;
@@ -743,10 +562,10 @@ class Calendar
                     LIMIT 1";
 
 
-
+/*
                     echo "<br>---------filter1-----";
 print_r($positions_to_filter);
-
+*/
                     $query = $this->db->prepare($sql);
                     $query->execute([
                         "tags" => implode(", ", [$data_[0], $data_[1]]),
@@ -779,16 +598,17 @@ print_r($positions_to_filter);
                         foreach ($rows as $row) {
                             $positions_to_filter[] = $row["position_id"];
                         }
-
+/*
                         echo "<br>---------filter2-----";
                         print_r($positions_to_filter);
-
+*/
                     }
 
                     $sql_ext = "";
                     if(!empty($positions_to_filter)) {
                         $sql_ext = " AND sp_t.position_id NOT IN (" . implode(", ", $positions_to_filter) . ")";
                     }
+
 
                     $sql = "SELECT sp.name_en 
                     FROM sexpositions sp
@@ -798,12 +618,38 @@ print_r($positions_to_filter);
                     LIMIT 1";
 
                     $query = $this->db->prepare($sql);
+
                     $query->execute([
                         "tag" => $data_[0],
                         //"positions_not" => x
                     ]);
                     $row = $query->fetchAll(PDO::FETCH_ASSOC);
 
+                    if(empty($row)) {
+                        echo $data_[0] . "----------";
+                        echo $sql . "<br><br>";
+
+                        // TODO
+                        // ha nem talál erre a kategóriára már
+
+                        while( empty($row[0]) ) {
+
+                            $maxVal = max($this->positions_leftover);
+                            $maxKey = array_search($maxVal, $this->positions_leftover);
+
+                            $query = $this->db->prepare($sql);
+                            $query->execute([
+                                "tag" => $maxKey,
+                            ]);
+                            $row = $query->fetchAll(PDO::FETCH_ASSOC);
+
+                            if( empty($row) ) {
+                                unset($this->positions_leftover[$maxKey]);
+                            } else {
+                                $this->positions_leftover[$maxKey]--;
+                            }
+                        }
+                    }
                     $final[$category][$index] = $row[0]["name_en"];
 
                 }
@@ -812,20 +658,22 @@ print_r($positions_to_filter);
             $categories_temp[] = $category;
 
         }
-
+/*
         echo "******************";
         echo "<br>";
         echo "<br>";
         echo "végleges behelyettesítve?";
         echo "<br>";
         print_r($final);
-
+*/
+        $this->sexpositions = $final;
+/*
         echo "******************";
         echo "<br>";
         echo "<br>";
         echo "fennmaradó kategóriák";
         echo "<br>";
         print_r($temp_r2);
-
+*/
     }
 }

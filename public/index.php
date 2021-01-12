@@ -94,9 +94,10 @@ $app->get('/test-cal', function ($request, $response, $args) use ($pdo) {
     //shuffle($pose_order1);
     //shuffle($pose_order2);
 
-    //$calendar->setTestData($pose_order1, $pose_order2);
+    $calendar->setTestData($pose_order1, $pose_order2);
 
-    //$calendar->calculateCategories();
+    $calendar->calculateCategories();
+    $calendar->sortPositionsForYear();
 
     //$calendar->getPositions();
 
